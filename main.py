@@ -2,17 +2,13 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-# --- 페이지 기본 설정 ---
-st.set_page_config(
-    page_title="MBTI World Map Dashboard",
-    page_icon="🌍",
-    layout="centered"
-)
+# --- 페이지 설정 ---
+st.set_page_config(page_title="MBTI World Map", page_icon="🌍", layout="centered")
 
-st.title("🌍 MBTI 유형별 세계 지도 시각화 대시보드")
-st.caption("업로드한 데이터를 기반으로 MBTI 유형 분포를 세계 지도 위에 시각적으로 확인해보세요.")
+st.title("🌍 MBTI 유형별 세계 지도 시각화")
+st.caption("업로드한 MBTI 데이터를 기반으로 국가별 비율을 시각적으로 확인할 수 있습니다.")
 
-# --- MBTI 특징 요약 데이터 ---
+# --- MBTI 설명 ---
 mbti_descriptions = {
     "INFJ": "통찰력 있고 이상주의적이며, 타인의 감정을 깊이 이해합니다.",
     "INFP": "감성적이고 창의적이며, 개인의 가치와 신념을 중시합니다.",
@@ -33,71 +29,65 @@ mbti_descriptions = {
 }
 
 # --- 파일 업로드 ---
-uploaded_file = st.file_uploader("📂 MBTI 데이터 파일을 업로드하세요 (.csv 형식)", type=["csv"])
+uploaded_file = st.file_uploader("📂 CSV 파일 업로드 (예: countriesMBTI_16types.csv)", type=["csv"])
 
-if uploaded_file is not None:
-    try:
-        df = pd.read_csv(uploaded_file)
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
 
-        # --- Country 열 확인 ---
-        if "Country" not in df.columns:
-            st.error("❌ 업로드된 CSV에 'Country' 컬럼이 없습니다.")
-            st.stop()
+    if "Country" not in df.columns:
+        st.error("❌ CSV 파일에 'Country' 열이 없습니다.")
+        st.stop()
 
-        # --- MBTI 유형 리스트 ---
-        mbti_types = [c for c in df.columns if c != "Country"]
-        if len(mbti_types) == 0:
-            st.error("❌ MBTI 데이터가 없습니다. INFJ, ENFP 등 컬럼이 포함되어야 합니다.")
-            st.stop()
+    mbti_types = [col for col in df.columns if col != "Country"]
+    if not mbti_types:
+        st.error("❌ MBTI 유형 데이터가 없습니다 (예: INFJ, ENFP 등).")
+        st.stop()
 
-        # --- MBTI 선택 ---
-        selected_mbti = st.selectbox("🔎 시각화할 MBTI 유형을 선택하세요:", mbti_types)
+    selected_mbti = st.selectbox("🔍 시각화할 MBTI 유형을 선택하세요:", mbti_types)
+    df[selected_mbti] = pd.to_numeric(df[selected_mbti], errors="coerce")
 
-        # --- 지도 데이터 준비 ---
-        df_map = df[["Country", selected_mbti]].copy()
-        df_map[selected_mbti] = pd.to_numeric(df_map[selected_mbti], errors="coerce")
+    # --- 국가 이름 정리 ---
+    df["Country"] = df["Country"].str.strip()
 
-        # --- Altair 세계지도 (내장 topojson 사용) ---
-        countries = alt.topo_feature("https://cdn.jsdelivr.net/npm/vega-datasets@v1.29.0/data/world-110m.json", "countries")
+    # --- 세계지도 데이터 (내장 json 직접 읽기) ---
+    from vega_datasets import data
+    world = data.world_110m.url  # Altair 내장 데이터 URL
 
-        map_chart = (
-            alt.Chart(countries)
-            .mark_geoshape(stroke="lightgray")
-            .encode(
-                color=alt.Color(
-                    f"{selected_mbti}:Q",
-                    scale=alt.Scale(scheme="tealblues"),
-                    title=f"{selected_mbti} 비율(%)"
-                ),
-                tooltip=["Country:N", f"{selected_mbti}:Q"]
-            )
-            .transform_lookup(
-                lookup="properties.name",
-                from_=alt.LookupData(df_map, "Country", [selected_mbti])
-            )
-            .project("equalEarth")
-            .properties(
-                width=750,
-                height=450,
-                title=f"🌐 전세계 {selected_mbti} 분포 지도"
-            )
+    # --- 지도 그리기 ---
+    map_chart = (
+        alt.Chart(alt.topo_feature(world, "countries"))
+        .mark_geoshape(stroke="gray", strokeWidth=0.5)
+        .transform_lookup(
+            lookup="properties.name",
+            from_=alt.LookupData(df, "Country", [selected_mbti])
         )
+        .encode(
+            color=alt.Color(
+                f"{selected_mbti}:Q",
+                scale=alt.Scale(scheme="tealblues"),
+                title=f"{selected_mbti} 비율(%)"
+            ),
+            tooltip=["properties.name:N", f"{selected_mbti}:Q"]
+        )
+        .project("equalEarth")
+        .properties(
+            width=800,
+            height=450,
+            title=f"🌐 {selected_mbti} 분포 지도"
+        )
+    )
 
-        st.altair_chart(map_chart, use_container_width=True)
+    st.altair_chart(map_chart, use_container_width=True)
 
-        # --- MBTI 설명 표시 ---
-        with st.expander(f"🧠 {selected_mbti} 유형 특징 보기"):
-            st.markdown(f"**{selected_mbti}** — {mbti_descriptions.get(selected_mbti, '유형 설명이 없습니다.')}")
-            st.dataframe(df_map.sort_values(by=selected_mbti, ascending=False).head(10).style.format({selected_mbti: "{:.2f}"}))
-
-        st.success("✅ 지도와 MBTI 분석이 완료되었습니다!")
-
-    except Exception as e:
-        st.error(f"⚠️ 파일을 불러오는 중 오류가 발생했습니다: {e}")
+    # --- MBTI 설명 + 상위 국가 테이블 ---
+    with st.expander(f"🧠 {selected_mbti} 특징 보기 및 상위 국가"):
+        st.markdown(f"**{selected_mbti}** — {mbti_descriptions.get(selected_mbti, '유형 설명이 없습니다.')}")
+        top10 = df.nlargest(10, selected_mbti)[["Country", selected_mbti]]
+        st.dataframe(top10.style.format({selected_mbti: "{:.2f}"}))
 
 else:
     st.info("👆 먼저 CSV 파일을 업로드해주세요. 예시: `countriesMBTI_16types.csv`")
 
 # --- 푸터 ---
 st.markdown("---")
-st.markdown("💡 Tip: 'Country' 열에는 국가 이름이, 각 MBTI 열에는 해당 유형의 비율(%)이 포함되어야 합니다.")
+st.caption("💡 국가 이름은 영어로 입력되어 있어야 하며, MBTI별 비율(%) 열이 포함되어야 합니다.")
