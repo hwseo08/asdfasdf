@@ -1,9 +1,11 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+import json
+from urllib.request import urlopen
 
-# --- 페이지 설정 ---
-st.set_page_config(page_title="MBTI World Map", page_icon="🌍", layout="centered")
+# --- 페이지 기본 설정 ---
+st.set_page_config(page_title="MBTI World Map", page_icon="🌍", layout="wide")
 
 st.title("🌍 MBTI 유형별 세계 지도 시각화")
 st.caption("업로드한 MBTI 데이터를 기반으로 국가별 비율을 시각적으로 확인할 수 있습니다.")
@@ -45,38 +47,33 @@ if uploaded_file:
 
     selected_mbti = st.selectbox("🔍 시각화할 MBTI 유형을 선택하세요:", mbti_types)
     df[selected_mbti] = pd.to_numeric(df[selected_mbti], errors="coerce")
-
-    # --- 국가 이름 정리 ---
     df["Country"] = df["Country"].str.strip()
 
-    # --- Altair 공식 TopoJSON (라이브러리 설치 불필요) ---
-    world_url = "https://cdn.jsdelivr.net/npm/vega-datasets@2.2.0/data/world-110m.json"
+    # --- 세계지도 GeoJSON을 직접 로드 ---
+    # CDN 접근 대신 local cache를 통해 altair가 접근 가능하도록 함
+    geojson_url = "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
+    with urlopen(geojson_url) as response:
+        countries = json.load(response)
 
     # --- 지도 생성 ---
-    map_chart = (
-        alt.Chart(alt.topo_feature(world_url, "countries"))
-        .mark_geoshape(stroke="lightgray", strokeWidth=0.5)
+    chart = (
+        alt.Chart(alt.Data(values=countries["features"]))
+        .mark_geoshape(stroke="gray", strokeWidth=0.4)
         .transform_lookup(
             lookup="properties.name",
             from_=alt.LookupData(df, "Country", [selected_mbti])
         )
         .encode(
-            color=alt.Color(
-                f"{selected_mbti}:Q",
-                scale=alt.Scale(scheme="tealblues"),
-                title=f"{selected_mbti} 비율(%)"
-            ),
+            color=alt.Color(f"{selected_mbti}:Q",
+                            scale=alt.Scale(scheme="blues"),
+                            title=f"{selected_mbti} 비율(%)"),
             tooltip=["properties.name:N", f"{selected_mbti}:Q"]
         )
         .project("equalEarth")
-        .properties(
-            width=800,
-            height=450,
-            title=f"🌐 {selected_mbti} 분포 지도"
-        )
+        .properties(width=850, height=480, title=f"🌐 {selected_mbti} 분포 지도")
     )
 
-    st.altair_chart(map_chart, use_container_width=True)
+    st.altair_chart(chart, use_container_width=True)
 
     # --- MBTI 설명 + 상위 국가 테이블 ---
     with st.expander(f"🧠 {selected_mbti} 특징 보기 및 상위 국가"):
@@ -87,6 +84,5 @@ if uploaded_file:
 else:
     st.info("👆 먼저 CSV 파일을 업로드해주세요. 예시: `countriesMBTI_16types.csv`")
 
-# --- 푸터 ---
 st.markdown("---")
 st.caption("💡 국가 이름은 영어로 입력되어 있어야 하며, MBTI별 비율(%) 열이 포함되어야 합니다.")
