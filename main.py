@@ -49,14 +49,13 @@ if uploaded_file:
     # --- 국가 이름 정리 ---
     df["Country"] = df["Country"].str.strip()
 
-    # --- 세계지도 데이터 (내장 json 직접 읽기) ---
-    from vega_datasets import data
-    world = data.world_110m.url  # Altair 내장 데이터 URL
+    # --- Altair 공식 TopoJSON (라이브러리 설치 불필요) ---
+    world_url = "https://cdn.jsdelivr.net/npm/vega-datasets@2.2.0/data/world-110m.json"
 
-    # --- 지도 그리기 ---
+    # --- 지도 생성 ---
     map_chart = (
-        alt.Chart(alt.topo_feature(world, "countries"))
-        .mark_geoshape(stroke="gray", strokeWidth=0.5)
+        alt.Chart(alt.topo_feature(world_url, "countries"))
+        .mark_geoshape(stroke="lightgray", strokeWidth=0.5)
         .transform_lookup(
             lookup="properties.name",
             from_=alt.LookupData(df, "Country", [selected_mbti])
