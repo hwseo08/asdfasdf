@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 
 st.set_page_config(page_title="전공별·학력별 임금 분석", layout="wide")
 
@@ -25,34 +24,27 @@ if uploaded_file is not None:
 
     # 월평균 임금 비교 그래프
     st.subheader("학력별 월평균 임금 비교")
-    fig, ax = plt.subplots()
-    sns.barplot(data=major_df, x='최종학력', y='소득(월평균임금_만원)', palette='coolwarm', ax=ax)
-    ax.set_ylabel('월평균임금 (만원)')
-    ax.set_xlabel('최종학력')
-    st.pyplot(fig)
+    fig = px.bar(major_df, x='최종학력', y='소득(월평균임금_만원)', color='최종학력', text='소득(월평균임금_만원)')
+    fig.update_layout(yaxis_title='월평균임금 (만원)', xaxis_title='최종학력')
+    st.plotly_chart(fig, use_container_width=True)
 
     # 근속연수 비교 그래프
     st.subheader("학력별 평균 근속연수")
-    fig2, ax2 = plt.subplots()
-    sns.barplot(data=major_df, x='최종학력', y='평균근속연수(년)', palette='viridis', ax=ax2)
-    ax2.set_ylabel('평균근속연수 (년)')
-    ax2.set_xlabel('최종학력')
-    st.pyplot(fig2)
+    fig2 = px.bar(major_df, x='최종학력', y='평균근속연수(년)', color='최종학력', text='평균근속연수(년)')
+    fig2.update_layout(yaxis_title='평균근속연수 (년)', xaxis_title='최종학력')
+    st.plotly_chart(fig2, use_container_width=True)
 
     # 주당근로시간 비교 그래프
     st.subheader("학력별 주당 평균 근로시간")
-    fig3, ax3 = plt.subplots()
-    sns.barplot(data=major_df, x='최종학력', y='주당평균근로시간(시간)', palette='magma', ax=ax3)
-    ax3.set_ylabel('주당평균근로시간 (시간)')
-    ax3.set_xlabel('최종학력')
-    st.pyplot(fig3)
+    fig3 = px.bar(major_df, x='최종학력', y='주당평균근로시간(시간)', color='최종학력', text='주당평균근로시간(시간)')
+    fig3.update_layout(yaxis_title='주당평균근로시간 (시간)', xaxis_title='최종학력')
+    st.plotly_chart(fig3, use_container_width=True)
 
     # 전체 전공 비교 히트맵
     st.subheader("전공별·학력별 월평균임금 히트맵")
     pivot_df = df.pivot('전공대분류', '최종학력', '소득(월평균임금_만원)')
-    fig4, ax4 = plt.subplots(figsize=(8,6))
-    sns.heatmap(pivot_df, annot=True, fmt='.1f', cmap='coolwarm', ax=ax4)
-    st.pyplot(fig4)
+    fig4 = px.imshow(pivot_df, text_auto='.1f', color_continuous_scale='RdBu_r')
+    st.plotly_chart(fig4, use_container_width=True)
 
     st.markdown("---")
     st.markdown("본 대시보드는 전공과 학력별로 월평균임금, 근속연수, 주당근로시간을 시각적으로 비교할 수 있도록 제작되었습니다.")
