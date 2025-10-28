@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
 st.set_page_config(page_title="전공별·학력별 임금 분석", layout="wide")
 
@@ -22,29 +21,21 @@ if uploaded_file is not None:
     st.subheader(f"{selected_major} 분석")
     st.dataframe(major_df)
 
-    # 월평균 임금 비교 그래프
+    # 월평균 임금 비교
     st.subheader("학력별 월평균 임금 비교")
-    fig = px.bar(major_df, x='최종학력', y='소득(월평균임금_만원)', color='최종학력', text='소득(월평균임금_만원)')
-    fig.update_layout(yaxis_title='월평균임금 (만원)', xaxis_title='최종학력')
-    st.plotly_chart(fig, use_container_width=True)
+    st.bar_chart(major_df.set_index('최종학력')['소득(월평균임금_만원)'])
 
-    # 근속연수 비교 그래프
+    # 근속연수 비교
     st.subheader("학력별 평균 근속연수")
-    fig2 = px.bar(major_df, x='최종학력', y='평균근속연수(년)', color='최종학력', text='평균근속연수(년)')
-    fig2.update_layout(yaxis_title='평균근속연수 (년)', xaxis_title='최종학력')
-    st.plotly_chart(fig2, use_container_width=True)
+    st.bar_chart(major_df.set_index('최종학력')['평균근속연수(년)'])
 
-    # 주당근로시간 비교 그래프
+    # 주당근로시간 비교
     st.subheader("학력별 주당 평균 근로시간")
-    fig3 = px.bar(major_df, x='최종학력', y='주당평균근로시간(시간)', color='최종학력', text='주당평균근로시간(시간)')
-    fig3.update_layout(yaxis_title='주당평균근로시간 (시간)', xaxis_title='최종학력')
-    st.plotly_chart(fig3, use_container_width=True)
+    st.bar_chart(major_df.set_index('최종학력')['주당평균근로시간(시간)'])
 
-    # 전체 전공 비교 히트맵
-    st.subheader("전공별·학력별 월평균임금 히트맵")
-    pivot_df = df.pivot('전공대분류', '최종학력', '소득(월평균임금_만원)')
-    fig4 = px.imshow(pivot_df, text_auto='.1f', color_continuous_scale='RdBu_r')
-    st.plotly_chart(fig4, use_container_width=True)
+    # 전체 전공 비교 히트맵 (st.write로 간단하게 표현)
+    st.subheader("전공별·학력별 월평균임금 표")
+    st.write(df.pivot('전공대분류', '최종학력', '소득(월평균임금_만원)'))
 
     st.markdown("---")
     st.markdown("본 대시보드는 전공과 학력별로 월평균임금, 근속연수, 주당근로시간을 시각적으로 비교할 수 있도록 제작되었습니다.")
